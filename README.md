@@ -150,6 +150,21 @@ docker compose up -d --build
 ```
 Open `http://localhost:3000`. The browser-facing URLs (`NEXT_PUBLIC_*`) are baked into the frontend image, so rebuild after changing them.
 
+### Public deployment (single server, automatic HTTPS)
+
+`docker-compose.prod.yml` adds [Caddy](https://caddyserver.com) in front of the stack. It obtains a TLS certificate for your domain and serves everything on one origin: the frontend at `/`, the user API at `/user-api` and the chat API at `/chat-api`. Only ports 80 and 443 are exposed.
+
+1. Get a server (Ubuntu, 2 GB+ RAM) and point your domain's DNS `A` record at its IP. Open ports 80 and 443.
+2. Install Docker: `curl -fsSL https://get.docker.com | sh`
+3. `git clone https://github.com/qauidabbas/ChitChat && cd ChitChat`
+4. Create `backend/user/.env`, `backend/chat/.env` and `backend/mail/.env` from their `.env.example` files (`JWT_TOKEN` must match in user and chat).
+5. `cp .env.example .env`, then set `DOMAIN` and a strong `RABBITMQ_PASSWORD`.
+6. Start:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+The app is live at `https://<DOMAIN>`. To update later: `git pull` and rerun the same command.
+
 Without Docker, `scripts/start-prod.sh` builds every service and starts them in the background (logs go to `logs/`).
 
 ---

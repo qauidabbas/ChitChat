@@ -30,3 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker compose build
+      - name: Validate production compose config
+        run: docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+        env:
+          DOMAIN: example.com
+          RABBITMQ_PASSWORD: ci
