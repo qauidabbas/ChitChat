@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
-
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
@@ -26,6 +25,7 @@
     "@types/express": "^5.0.6",
     "@types/nodemailer": "^8.0.1",
     "concurrently": "^10.0.3",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "typescript": "^5.9.3"
   }
 }
