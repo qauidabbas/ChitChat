@@ -138,6 +138,22 @@ The application should now be running. Open your browser and navigate to `http:/
 
 ---
 
+## 🐳 Running with Docker
+
+`docker-compose.yml` runs the whole stack: MongoDB, Redis, RabbitMQ, the three backend services and the frontend.
+
+1. Create `backend/user/.env`, `backend/chat/.env` and `backend/mail/.env` from their `.env.example` files. Compose reads `JWT_TOKEN`, Cloudinary and Gmail credentials from them; database, Redis and RabbitMQ settings are provided by compose.
+2. Optionally copy `.env.example` to `.env` at the repo root to change RabbitMQ credentials, use hosted MongoDB/Redis, or set public URLs.
+3. Start everything:
+```bash
+docker compose up -d --build
+```
+Open `http://localhost:3000`. The browser-facing URLs (`NEXT_PUBLIC_*`) are baked into the frontend image, so rebuild after changing them.
+
+Without Docker, `scripts/start-prod.sh` builds every service and starts them in the background (logs go to `logs/`).
+
+---
+
 ## 🌐 Deployment Notes
 
 Production build and start (run in each of `frontend`, `backend/user`, `backend/chat`, `backend/mail`):

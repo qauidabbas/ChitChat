@@ -1,0 +1,102 @@
+x-rabbitmq-credentials: &rabbitmq-credentials
+  RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-chitchat}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-chitchat}
+
+services:
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USERNAME:-chitchat}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-chitchat}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  user:
+    build: ./backend/user
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/user/.env
+        required: false
+    environment:
+      <<: *rabbitmq-credentials
+      PORT: 5000
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      RABBITMQ_HOST: rabbitmq
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  chat:
+    build: ./backend/chat
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/chat/.env
+        required: false
+    environment:
+      PORT: 5002
+      MONGO_URI: ${MONGO_URI:-mongodb://mongo:27017/}
+      USER_SERVICE: http://user:5000
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    ports:
+      - "5002:5002"
+    depends_on:
+      mongo: { condition: service_healthy }
+      user: { condition: service_started }
+
+  mail:
+    build: ./backend/mail
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/mail/.env
+        required: false
+    environment:
+      <<: *rabbitmq-credentials
+      PORT: 5001
+      RABBITMQ_HOST: rabbitmq
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_USER_SERVICE: ${NEXT_PUBLIC_USER_SERVICE:-http://localhost:5000}
+        NEXT_PUBLIC_CHAT_SERVICE: ${NEXT_PUBLIC_CHAT_SERVICE:-http://localhost:5002}
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - user
+      - chat
+
+volumes:
+  mongo-data:
