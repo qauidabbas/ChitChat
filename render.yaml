@@ -1,0 +1,60 @@
+# Render Blueprint for the free tier (no card): https://render.com/docs/blueprint-spec
+# Free web services sleep after 15 min idle and block outbound SMTP, so:
+#  - the mail consumer runs inside the user service (a sleeping mail service would miss OTP messages)
+#  - OTP emails go through Brevo's HTTPS API (BREVO_API_KEY)
+# The frontend is deployed separately (e.g. Vercel) with NEXT_PUBLIC_USER_SERVICE / NEXT_PUBLIC_CHAT_SERVICE
+# pointing at the two web services below.
+envVarGroups:
+  - name: chitchat-shared
+    envVars:
+      - key: JWT_TOKEN
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+services:
+  - type: web
+    name: chitchat-user
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: cd user && npm ci && npm run build && cd ../mail && npm ci && npm run build
+    startCommand: PORT=5001 node mail/dist/index.js & node user/dist/index.js
+    envVars:
+      - fromGroup: chitchat-shared
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: chitchat-redis
+          property: connectionString
+      - key: RABBITMQ_URL
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+
+  - type: web
+    name: chitchat-chat
+    runtime: node
+    plan: free
+    rootDir: backend/chat
+    buildCommand: npm ci && npm run build
+    startCommand: node dist/index.js
+    envVars:
+      - fromGroup: chitchat-shared
+      - key: USER_SERVICE
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  - type: keyvalue
+    name: chitchat-redis
+    plan: free
+    ipAllowList: []

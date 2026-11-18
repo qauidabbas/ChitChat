@@ -165,6 +165,15 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```
 The app is live at `https://<DOMAIN>`. To update later: `git pull` and rerun the same command.
 
+### Free hosting without a card (Render + Vercel)
+
+[`render.yaml`](render.yaml) deploys the backends on Render's free tier. Free Render services sleep after 15 minutes idle (the first request then takes about a minute) and can't send SMTP, so the mail consumer runs inside the user service and OTP emails go through [Brevo](https://www.brevo.com)'s HTTPS API.
+
+Free accounts needed: Render, Vercel, MongoDB Atlas (M0), CloudAMQP (Little Lemur), Brevo.
+
+1. Render → **New → Blueprint** → this repo. Fill in `MONGO_URI`, `RABBITMQ_URL` (CloudAMQP `amqps://` URL), `BREVO_API_KEY`, `MAIL_FROM` (verified Brevo sender), Cloudinary keys, `USER_SERVICE` (`https://<chitchat-user>.onrender.com`) and `FRONTEND_URL` (your Vercel URL).
+2. Vercel → import this repo with root directory `frontend`, and set `NEXT_PUBLIC_USER_SERVICE` / `NEXT_PUBLIC_CHAT_SERVICE` to the two Render URLs.
+
 Without Docker, `scripts/start-prod.sh` builds every service and starts them in the background (logs go to `logs/`).
 
 ---
