@@ -1,0 +1,145 @@
+# ChitChat
+
+ChitChat is a modern, real-time chat application built with a robust **Microservices Architecture**. It features real-time messaging, image sharing, user authentication with OTP email verification, and a sleek, responsive UI.
+
+## 🏗️ Architecture & Tech Stack
+
+The application is split into a frontend client and three distinct backend microservices:
+
+### Frontend (`/frontend`)
+*   **Framework**: Next.js 16 (App Router) & React 19
+*   **Styling**: Tailwind CSS v4
+*   **Real-time & HTTP**: Socket.io-client, Axios
+*   **State Management**: React Context API (`AppContext`, `SocketContext`)
+
+### Backend Microservices (`/backend`)
+*   **User Service (`/backend/user`)**: Handles authentication, user profiles, friend requests, and JWT generation. Uses **Redis** for OTP rate limiting and temporary sessions.
+*   **Chat Service (`/backend/chat`)**: Handles real-time messaging using **Socket.io**. Manages message history and handles image uploads via **Cloudinary** and **Multer**.
+*   **Mail Service (`/backend/mail`)**: An asynchronous worker service that listens to **RabbitMQ** to send OTP verification emails via **Nodemailer**.
+
+### Infrastructure & Databases
+*   **MongoDB (Mongoose)**: Primary database for Users and Chats/Messages.
+*   **Redis**: Caching and temporary state (OTP storage).
+*   **RabbitMQ**: Message broker for asynchronous communication between services (User Service -> Mail Service).
+
+---
+
+## 🚀 Prerequisites
+
+Before you begin, ensure you have the following installed:
+*   **Node.js** (v18 or higher)
+*   **MongoDB** (Local or Atlas)
+*   **Redis** (Local or Upstash)
+*   **RabbitMQ** (Local or CloudAMQP)
+*   **Cloudinary Account** (For image uploads)
+*   **Gmail Account** (With an App Password for Nodemailer)
+
+---
+
+## 🛠️ Setup & Installation
+
+### 1. Clone the repository
+```bash
+git clone <your-repo-url>
+cd ChitChat
+```
+
+### 2. Install Dependencies
+You need to install dependencies for the frontend and all three backend services.
+```bash
+# Frontend
+cd frontend && npm install && cd ..
+
+# User Service
+cd backend/user && npm install && cd ../..
+
+# Chat Service
+cd backend/chat && npm install && cd ../..
+
+# Mail Service
+cd backend/mail && npm install && cd ../..
+```
+
+### 3. Environment Variables
+
+You need to set up `.env` files in each of the four main directories.
+
+**`frontend/.env.local`**
+```env
+NEXT_PUBLIC_USER_SERVICE=http://localhost:5000
+NEXT_PUBLIC_CHAT_SERVICE=http://localhost:5002
+```
+
+**`backend/user/.env`**
+```env
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+REDIS_URL=your_redis_connection_string
+RABBITMQ_HOST=localhost
+RABBITMQ_USERNAME=guest
+RABBITMQ_PASSWORD=guest
+JWT_TOKEN=your_super_secret_jwt_key
+FRONTEND_URL=http://localhost:3000
+```
+
+**`backend/chat/.env`**
+```env
+PORT=5002
+MONGO_URI=your_mongodb_connection_string
+JWT_TOKEN=your_super_secret_jwt_key
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+FRONTEND_URL=http://localhost:3000
+```
+
+**`backend/mail/.env`**
+```env
+PORT=5001
+RABBITMQ_HOST=localhost
+RABBITMQ_USERNAME=guest
+RABBITMQ_PASSWORD=guest
+MAIL_USER=your_gmail_address@gmail.com
+MAIL_PASS=your_16_character_google_app_password
+```
+
+---
+
+## 🏃‍♂️ Running the Application Locally
+
+To run the application locally, you need to start the frontend and all three backend services in separate terminal windows.
+
+**Terminal 1: Frontend**
+```bash
+cd frontend
+npm run dev
+```
+
+**Terminal 2: User Service**
+```bash
+cd backend/user
+npm run dev
+```
+
+**Terminal 3: Chat Service**
+```bash
+cd backend/chat
+npm run dev
+```
+
+**Terminal 4: Mail Service**
+```bash
+cd backend/mail
+npm run dev
+```
+
+The application should now be running. Open your browser and navigate to `http://localhost:3000`.
+
+---
+
+## 🌐 Deployment Notes
+
+When deploying to production:
+1.  **CORS**: Ensure `FRONTEND_URL` in the backend `.env` files is set to your actual deployed frontend URL.
+2.  **Frontend API URLs**: Ensure `NEXT_PUBLIC_USER_SERVICE` and `NEXT_PUBLIC_CHAT_SERVICE` in `frontend/.env.local` point to your deployed backend URLs.
+3.  **Socket.io**: Update the `origin` setting in `backend/chat/src/config/socket.ts` to match your deployed frontend URL.
