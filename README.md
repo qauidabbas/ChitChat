@@ -62,7 +62,7 @@ cd backend/mail && npm install && cd ../..
 
 ### 3. Environment Variables
 
-You need to set up `.env` files in each of the four main directories.
+You need to set up `.env` files in each of the four main directories. Each directory has a `.env.example` to copy (`cp .env.example .env`, or `.env.local` for the frontend). `.env` files are git-ignored; never commit them.
 
 **`frontend/.env.local`**
 ```env
@@ -87,6 +87,7 @@ FRONTEND_URL=http://localhost:3000
 PORT=5002
 MONGO_URI=your_mongodb_connection_string
 JWT_TOKEN=your_super_secret_jwt_key
+USER_SERVICE=http://localhost:5000
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
@@ -139,7 +140,14 @@ The application should now be running. Open your browser and navigate to `http:/
 
 ## 🌐 Deployment Notes
 
+Production build and start (run in each of `frontend`, `backend/user`, `backend/chat`, `backend/mail`):
+```bash
+npm ci
+npm run build
+npm start          # frontend: npm start -- -p 3000
+```
+
 When deploying to production:
-1.  **CORS**: Ensure `FRONTEND_URL` in the backend `.env` files is set to your actual deployed frontend URL.
-2.  **Frontend API URLs**: Ensure `NEXT_PUBLIC_USER_SERVICE` and `NEXT_PUBLIC_CHAT_SERVICE` in `frontend/.env.local` point to your deployed backend URLs.
-3.  **Socket.io**: Update the `origin` setting in `backend/chat/src/config/socket.ts` to match your deployed frontend URL.
+1.  **Frontend API URLs**: `NEXT_PUBLIC_USER_SERVICE` and `NEXT_PUBLIC_CHAT_SERVICE` are baked in at build time, so set them before `npm run build`. They can be absolute URLs or same-origin path prefixes behind a reverse proxy (e.g. `/__devin/port/5002`); the socket.io client uses `<prefix>/socket.io` as its path.
+2.  **CORS**: `FRONTEND_URL` in `backend/user/.env` and `backend/chat/.env` is a comma-separated allowlist of origins. Include your deployed frontend URL, plus any origin your proxy rewrites requests to (e.g. `http://localhost:5000,http://localhost:5002`).
+3.  **Infrastructure**: MongoDB, Redis and RabbitMQ must be reachable from the backends (`MONGO_URI`, `REDIS_URL`, `RABBITMQ_*`).
