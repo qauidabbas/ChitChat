@@ -22,7 +22,10 @@ export const SocketProvider=({children}: ProviderProps)=>{
 
     useEffect(()=>{
         if(!user?._id)return;
-        const newSocket=io(chat_service, {
+        const chatUrl=new URL(chat_service, window.location.href);
+        const basePath=chatUrl.pathname.replace(/\/$/, "");
+        const newSocket=io(chatUrl.origin, {
+            path: `${basePath}/socket.io`,
             query:{
                 userId: user._id,
             }
