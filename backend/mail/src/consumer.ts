@@ -15,7 +15,8 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const RABBITMQ_URL = {
+// RABBITMQ_URL (e.g. amqps://user:pass@host/vhost from CloudAMQP) takes precedence over host/username/password
+const RABBITMQ_URL = process.env.RABBITMQ_URL || {
     protocol: "amqp" as const,
     hostname: process.env.RABBITMQ_HOST!,
     port: 5672,
@@ -24,6 +25,27 @@ const RABBITMQ_URL = {
 };
 
 const QUEUE_NAME = "send-otp";
+
+const MAIL_FROM = process.env.MAIL_FROM || process.env.MAIL_USER;
+
+// Brevo's HTTPS API is used when BREVO_API_KEY is set (for hosts that block outbound SMTP); otherwise Gmail SMTP.
+const sendMail = async (to: string, subject: string, text: string): Promise<void> => {
+    if (!process.env.BREVO_API_KEY) {
+        await transporter.sendMail({ from: `"ChitChat" <${MAIL_FROM}>`, to, subject, text });
+        return;
+    }
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: { "api-key": process.env.BREVO_API_KEY, "content-type": "application/json" },
+        body: JSON.stringify({
+            sender: { name: "ChitChat", email: MAIL_FROM },
+            to: [{ email: to }],
+            subject,
+            textContent: text,
+        }),
+    });
+    if (!res.ok) throw new Error(`Brevo API ${res.status}: ${await res.text()}`);
+};
 
 // Recursive retry — reconnects if RabbitMQ drops the connection (common on cloud brokers)
 export const startSendOtpConsumer = async (): Promise<void> => {
@@ -52,12 +74,7 @@ export const startSendOtpConsumer = async (): Promise<void> => {
             if (!message) return;
             try {
                 const { to, subject, body } = JSON.parse(message.content.toString());
-                await transporter.sendMail({
-                    from: `"ChitChat" <${process.env.MAIL_USER}>`,
-                    to,
-                    subject,
-                    text: body,
-                });
+                await sendMail(to, subject, body);
                 console.log(`[Mail] OTP email sent to ${to}`);
                 channel.ack(message);
             } catch (error) {
