@@ -1,0 +1,17 @@
+# Public entrypoint: serves the frontend and proxies the backend APIs on one domain.
+# HTTPS certificates are issued automatically for {$DOMAIN}.
+{$DOMAIN} {
+	encode gzip
+
+	handle_path /user-api/* {
+		reverse_proxy user:5000
+	}
+
+	handle_path /chat-api/* {
+		reverse_proxy chat:5002
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

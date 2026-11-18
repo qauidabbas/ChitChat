@@ -1,0 +1,56 @@
+# Public deployment on a single server behind Caddy (automatic HTTPS).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Requires DOMAIN and RABBITMQ_PASSWORD in .env (see .env.example).
+
+x-rabbitmq-credentials: &rabbitmq-credentials
+  RABBITMQ_USERNAME: ${RABBITMQ_USERNAME:-chitchat}
+  RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+
+services:
+  rabbitmq:
+    environment:
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?set RABBITMQ_PASSWORD in .env}
+
+  user:
+    environment:
+      <<: *rabbitmq-credentials
+      FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN:?set DOMAIN in .env}}
+    ports: !reset []
+
+  chat:
+    environment:
+      FRONTEND_URL: ${FRONTEND_URL:-https://${DOMAIN:?set DOMAIN in .env}}
+    ports: !reset []
+
+  mail:
+    environment:
+      <<: *rabbitmq-credentials
+
+  frontend:
+    build:
+      args:
+        NEXT_PUBLIC_USER_SERVICE: /user-api
+        NEXT_PUBLIC_CHAT_SERVICE: /chat-api
+    ports: !reset []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - frontend
+      - user
+      - chat
+
+volumes:
+  caddy-data:
+  caddy-config:
